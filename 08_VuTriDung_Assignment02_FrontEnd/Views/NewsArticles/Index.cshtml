@@ -1,0 +1,418 @@
+@model IEnumerable<_08_VuTriDung_Assignment02_FrontEnd.Models.NewsArticleViewModel>
+@{
+    ViewData["Title"] = "News Articles Management";
+    var categories = ViewBag.Categories as List<_08_VuTriDung_Assignment02_FrontEnd.Models.CategoryViewModel> ?? new();
+    var currentSearch = ViewBag.CurrentSearch as string;
+    short? currentCat = ViewBag.CurrentCategory as short?;
+    bool? currentStatus = ViewBag.CurrentStatus as bool?;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h2 class="fw-bold mb-1">News Articles Management</h2>
+        <p class="text-muted small mb-0">Create, edit, tag, and publish university news articles.</p>
+    </div>
+    <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm" onclick="openCreateArticleModal()">
+        <i class="bi bi-file-earmark-plus-fill me-1"></i> Create News Article
+    </button>
+</div>
+
+<!-- Filters and Search -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-3">
+        <form method="get" asp-action="Index" class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="search" class="form-control border-start-0" placeholder="Search by title, headline, or content..." value="@currentSearch" />
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select name="categoryId" class="form-select rounded-pill">
+                    <option value="">All Categories</option>
+                    @foreach (var cat in categories)
+                    {
+                        <option value="@cat.CategoryID" selected="@(currentCat == cat.CategoryID)">@cat.CategoryName</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="status" class="form-select rounded-pill">
+                    <option value="">All Statuses</option>
+                    <option value="true" selected="@(currentStatus == true)">Active Only</option>
+                    <option value="false" selected="@(currentStatus == false)">Inactive Only</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-secondary rounded-pill w-100">Filter</button>
+                @if (!string.IsNullOrEmpty(currentSearch) || currentCat.HasValue || currentStatus.HasValue)
+                {
+                    <a asp-action="Index" class="btn btn-outline-secondary rounded-pill" title="Clear Filters">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                }
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Articles Table -->
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light text-uppercase small text-muted">
+                <tr>
+                    <th class="ps-4">ID</th>
+                    <th>Headline & Title</th>
+                    <th>Category</th>
+                    <th>Created By</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Tags</th>
+                    <th class="text-end pe-4">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="bi bi-journal-text fs-2 mb-2 d-block"></i>
+                            No news articles found.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td class="ps-4 fw-semibold text-muted">#@item.NewsArticleID</td>
+                            <td style="max-width: 280px;">
+                                <div class="fw-bold text-dark text-truncate" title="@item.Headline">@item.Headline</div>
+                                @if (!string.IsNullOrEmpty(item.NewsTitle) && item.NewsTitle != item.Headline)
+                                {
+                                    <div class="text-muted small text-truncate" title="@item.NewsTitle">@item.NewsTitle</div>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border rounded-pill px-2.5 py-1 small">
+                                    @(string.IsNullOrEmpty(item.CategoryName) ? "Uncategorized" : item.CategoryName)
+                                </span>
+                            </td>
+                            <td class="small text-secondary">
+                                <i class="bi bi-person me-1"></i>@(string.IsNullOrEmpty(item.CreatedByName) ? "ID: " + item.CreatedByID : item.CreatedByName)
+                            </td>
+                            <td class="small text-muted">
+                                @(item.CreatedDate?.ToString("MMM dd, yyyy") ?? "N/A")
+                            </td>
+                            <td>
+                                @if (item.NewsStatus == true)
+                                {
+                                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2.5 py-1 small fw-medium">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2.5 py-1 small fw-medium">Inactive</span>
+                                }
+                            </td>
+                            <td style="max-width: 150px;">
+                                <div class="d-flex flex-wrap gap-1">
+                                    @if (item.Tags != null && item.Tags.Any())
+                                    {
+                                        @foreach (var tag in item.Tags.Take(3))
+                                        {
+                                            <span class="badge bg-light text-secondary border rounded-pill px-1.5 py-0.5" style="font-size: 0.72rem;">#@tag.TagName</span>
+                                        }
+                                        @if (item.Tags.Count > 3)
+                                        {
+                                            <span class="badge bg-light text-muted border rounded-pill" style="font-size: 0.72rem;">+@(item.Tags.Count - 3)</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">-</span>
+                                    }
+                                </div>
+                            </td>
+                            <td class="text-end pe-4 text-nowrap">
+                                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 me-1" onclick="openEditArticleModal('@item.NewsArticleID')">
+                                    <i class="bi bi-pencil-square me-1"></i>Edit
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="confirmDeleteArticle('@item.NewsArticleID', '@item.Headline.Replace("'", "\\'")')">
+                                    <i class="bi bi-trash3 me-1"></i>Delete
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Create / Edit Article Modal -->
+<div class="modal fade" id="articleModal" tabindex="-1" aria-labelledby="articleModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content shadow-lg border-0 rounded-4">
+            <div class="modal-header border-0 py-3 bg-light rounded-top-4">
+                <h5 class="modal-title fw-bold" id="articleModalTitle">Create News Article</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="articleModalAlert" class="alert alert-danger d-none" role="alert"></div>
+
+                <form id="articleForm">
+                    <input type="hidden" id="isEditMode" value="false" />
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label for="modalArticleId" class="form-label small fw-semibold">Article ID <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control rounded-3" id="modalArticleId" placeholder="e.g. PRN232" maxlength="20" required />
+                            <div class="form-text small text-muted">Max 20 characters.</div>
+                        </div>
+                        <div class="col-md-8">
+                            <label for="modalCategoryId" class="form-label small fw-semibold">Category <span class="text-danger">*</span></label>
+                            <select class="form-select rounded-3" id="modalCategoryId" required>
+                                <option value="">-- Select Category --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="modalHeadline" class="form-label small fw-semibold">Headline <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control rounded-3" id="modalHeadline" placeholder="Main news headline" maxlength="150" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="modalNewsTitle" class="form-label small fw-semibold">Subtitle / Title</label>
+                        <input type="text" class="form-control rounded-3" id="modalNewsTitle" placeholder="Additional title or subtitle" maxlength="400" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="modalNewsSource" class="form-label small fw-semibold">News Source</label>
+                        <input type="text" class="form-control rounded-3" id="modalNewsSource" placeholder="e.g. Reuters, Internal, Internet" maxlength="400" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="modalNewsContent" class="form-label small fw-semibold">Content</label>
+                        <textarea class="form-control rounded-3" id="modalNewsContent" rows="6" placeholder="Write full article body content..." maxlength="4000"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold d-block">Tags</label>
+                        <div class="d-flex flex-wrap gap-2 p-3 bg-light rounded-3" id="modalTagsContainer">
+                            <span class="text-muted small">Loading tags...</span>
+                        </div>
+                    </div>
+
+                    <div class="form-check form-switch mt-3">
+                        <input class="form-check-input" type="checkbox" id="modalNewsStatus" checked>
+                        <label class="form-check-label small fw-semibold" for="modalNewsStatus">Published / Active Status</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 bg-light rounded-bottom-4 py-3">
+                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm" id="btnSaveArticle" onclick="submitArticleForm()">
+                    <span class="spinner-border spinner-border-sm d-none me-1" id="saveArticleSpinner" role="status"></span>
+                    Save Article
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reusable Delete Modal -->
+<partial name="_DeleteConfirmModal" />
+
+@section Scripts {
+    <script>
+        var articleModal = new bootstrap.Modal(document.getElementById('articleModal'));
+        var deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        var deleteTargetId = null;
+
+        function loadCategoriesAndTags(selectedCategoryId, selectedTagIds, callback) {
+            $.get('/NewsArticles/GetFormData', function (data) {
+                var $catSelect = $('#modalCategoryId');
+                $catSelect.empty().append('<option value="">-- Select Category --</option>');
+                data.categories.forEach(function (c) {
+                    var selected = (c.categoryID == selectedCategoryId) ? 'selected' : '';
+                    $catSelect.append(`<option value="${c.categoryID}" ${selected}>${c.categoryName}</option>`);
+                });
+
+                var $tagContainer = $('#modalTagsContainer');
+                $tagContainer.empty();
+                data.tags.forEach(function (t) {
+                    var checked = (selectedTagIds && selectedTagIds.includes(t.tagID)) ? 'checked' : '';
+                    var html = `
+                        <div class="form-check form-check-inline me-3 mb-1">
+                            <input class="form-check-input tag-checkbox" type="checkbox" value="${t.tagID}" id="tag_${t.tagID}" ${checked}>
+                            <label class="form-check-label small" for="tag_${t.tagID}">#${t.tagName}</label>
+                        </div>
+                    `;
+                    $tagContainer.append(html);
+                });
+
+                if (callback) callback();
+            });
+        }
+
+        function openCreateArticleModal() {
+            $('#articleModalAlert').addClass('d-none').text('');
+            $('#articleModalTitle').text('Create News Article');
+            $('#isEditMode').val('false');
+            $('#modalArticleId').val('').prop('readonly', false);
+            $('#modalHeadline').val('');
+            $('#modalNewsTitle').val('');
+            $('#modalNewsSource').val('Internal');
+            $('#modalNewsContent').val('');
+            $('#modalNewsStatus').prop('checked', true);
+
+            loadCategoriesAndTags(null, [], function () {
+                articleModal.show();
+            });
+        }
+
+        function openEditArticleModal(id) {
+            $('#articleModalAlert').addClass('d-none').text('');
+            $('#articleModalTitle').text('Edit Article #' + id);
+            $('#isEditMode').val('true');
+            $('#modalArticleId').val(id).prop('readonly', true);
+
+            $.get('/NewsArticles/GetFormData?id=' + encodeURIComponent(id), function (data) {
+                var art = data.article;
+                if (!art) {
+                    showToast('Article not found.', false);
+                    return;
+                }
+
+                $('#modalHeadline').val(art.headline);
+                $('#modalNewsTitle').val(art.newsTitle || '');
+                $('#modalNewsSource').val(art.newsSource || '');
+                $('#modalNewsContent').val(art.newsContent || '');
+                $('#modalNewsStatus').prop('checked', art.newsStatus !== false);
+
+                // Populate categories & tags
+                var $catSelect = $('#modalCategoryId');
+                $catSelect.empty().append('<option value="">-- Select Category --</option>');
+                data.categories.forEach(function (c) {
+                    var selected = (c.categoryID == art.categoryID) ? 'selected' : '';
+                    $catSelect.append(`<option value="${c.categoryID}" ${selected}>${c.categoryName}</option>`);
+                });
+
+                var $tagContainer = $('#modalTagsContainer');
+                $tagContainer.empty();
+                data.tags.forEach(function (t) {
+                    var checked = (art.tagIDs && art.tagIDs.includes(t.tagID)) ? 'checked' : '';
+                    var html = `
+                        <div class="form-check form-check-inline me-3 mb-1">
+                            <input class="form-check-input tag-checkbox" type="checkbox" value="${t.tagID}" id="tag_${t.tagID}" ${checked}>
+                            <label class="form-check-label small" for="tag_${t.tagID}">#${t.tagName}</label>
+                        </div>
+                    `;
+                    $tagContainer.append(html);
+                });
+
+                articleModal.show();
+            }).fail(function () {
+                showToast('Failed to load article details.', false);
+            });
+        }
+
+        function submitArticleForm() {
+            var isEdit = $('#isEditMode').val() === 'true';
+            var id = $('#modalArticleId').val().trim();
+            var headline = $('#modalHeadline').val().trim();
+            var title = $('#modalNewsTitle').val().trim();
+            var catId = $('#modalCategoryId').val();
+            var source = $('#modalNewsSource').val().trim();
+            var content = $('#modalNewsContent').val().trim();
+            var status = $('#modalNewsStatus').is(':checked');
+
+            var selectedTags = [];
+            $('.tag-checkbox:checked').each(function () {
+                selectedTags.push(parseInt($(this).val()));
+            });
+
+            if (!id || !headline || !catId) {
+                $('#articleModalAlert').removeClass('d-none').text('Please fill in Article ID, Headline, and select a Category.');
+                return;
+            }
+
+            var payload = {
+                NewsArticleID: id,
+                Headline: headline,
+                NewsTitle: title,
+                CategoryID: parseInt(catId),
+                NewsSource: source,
+                NewsContent: content,
+                NewsStatus: status,
+                SelectedTagIDs: selectedTags
+            };
+
+            $('#saveArticleSpinner').removeClass('d-none');
+            $('#btnSaveArticle').prop('disabled', true);
+
+            $.ajax({
+                url: '/NewsArticles/Save?isEdit=' + isEdit,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    $('#saveArticleSpinner').addClass('d-none');
+                    $('#btnSaveArticle').prop('disabled', false);
+
+                    if (res.success) {
+                        articleModal.hide();
+                        showToast(res.message, true);
+                        setTimeout(function () { location.reload(); }, 800);
+                    } else {
+                        $('#articleModalAlert').removeClass('d-none').text(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    $('#saveArticleSpinner').addClass('d-none');
+                    $('#btnSaveArticle').prop('disabled', false);
+                    $('#articleModalAlert').removeClass('d-none').text('Error saving article: ' + (xhr.responseText || 'Server error.'));
+                }
+            });
+        }
+
+        function confirmDeleteArticle(id, headline) {
+            deleteTargetId = id;
+            $('#deleteModalAlert').addClass('d-none').text('');
+            $('#deleteModalMessage').html(`Are you sure you want to delete article <strong>${headline}</strong> (ID: #${id})?`);
+            deleteModal.show();
+        }
+
+        $('#btnConfirmDelete').on('click', function () {
+            if (!deleteTargetId) return;
+
+            $('#deleteSpinner').removeClass('d-none');
+            $('#btnConfirmDelete').prop('disabled', true);
+
+            $.ajax({
+                url: '/NewsArticles/Delete?id=' + encodeURIComponent(deleteTargetId),
+                type: 'POST',
+                success: function (res) {
+                    $('#deleteSpinner').addClass('d-none');
+                    $('#btnConfirmDelete').prop('disabled', false);
+
+                    if (res.success) {
+                        deleteModal.hide();
+                        showToast(res.message, true);
+                        setTimeout(function () { location.reload(); }, 800);
+                    } else {
+                        $('#deleteModalAlert').removeClass('d-none').text(res.message);
+                    }
+                },
+                error: function (xhr) {
+                    $('#deleteSpinner').addClass('d-none');
+                    $('#btnConfirmDelete').prop('disabled', false);
+                    $('#deleteModalAlert').removeClass('d-none').text('Error deleting article: ' + (xhr.responseText || 'Server error.'));
+                }
+            });
+        });
+    </script>
+}
