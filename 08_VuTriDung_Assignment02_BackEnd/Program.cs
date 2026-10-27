@@ -32,7 +32,7 @@ builder.Services.AddScoped<ITagRepository, TagRepository>();
 
 // 3. Configure JWT Authentication & Authorization
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-var secretKey = jwtSettings["Key"] ?? "A_Very_Strong_Secret_Key_At_Least_32_Characters_Long!";
+var secretKey = jwtSettings["Key"];
 var keyBytes = Encoding.UTF8.GetBytes(secretKey);
 
 builder.Services.AddAuthentication(options =>
@@ -50,8 +50,8 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"] ?? "FUNewsManagementApi",
-        ValidAudience = jwtSettings["Audience"] ?? "FUNewsManagementClient",
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidAudience = jwtSettings["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
         ClockSkew = TimeSpan.Zero
     };

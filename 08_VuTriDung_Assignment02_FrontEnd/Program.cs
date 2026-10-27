@@ -17,7 +17,7 @@ builder.Services.AddTransient<JwtAuthorizationHeaderHandler>();
 // 2. Register HttpClient with JWT handler
 builder.Services.AddHttpClient("BackendApi", client =>
 {
-    var baseUrl = builder.Configuration["BackendApiUrl"] ?? "http://localhost:5208/";
+    var baseUrl = builder.Configuration["BackendApiUrl"];
     if (!baseUrl.EndsWith("/")) baseUrl += "/";
     client.BaseAddress = new Uri(baseUrl);
 })

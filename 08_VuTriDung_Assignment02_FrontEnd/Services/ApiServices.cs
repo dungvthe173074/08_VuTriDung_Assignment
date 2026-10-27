@@ -16,7 +16,7 @@ namespace _08_VuTriDung_Assignment02_FrontEnd.Services
         public ApiServiceBase(IHttpClientFactory clientFactory, IConfiguration configuration)
         {
             _clientFactory = clientFactory;
-            _baseUrl = configuration["BackendApiUrl"] ?? "http://localhost:5208/";
+            _baseUrl = configuration["BackendApiUrl"];
             if (!_baseUrl.EndsWith("/")) _baseUrl += "/";
         }
 

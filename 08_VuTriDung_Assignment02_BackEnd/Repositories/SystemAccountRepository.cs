@@ -70,14 +70,12 @@ namespace _08_VuTriDung_Assignment02.Repositories
             var cleanPassword = password.Trim();
 
             // 1. Check Admin Credentials from appsettings.json
-            var adminEmail = _configuration["AdminAccount:Email"] ?? "admin@FUNewsManagementSystem.org";
-            var adminPassword = _configuration["AdminAccount:Password"] ?? "@@abc123@@";
+            var adminEmail = _configuration["AdminAccount:Email"];
+            var adminPassword = _configuration["AdminAccount:Password"];
 
             if (string.Equals(cleanEmail, adminEmail.Trim(), StringComparison.OrdinalIgnoreCase))
             {
-                bool adminPassMatch = string.Equals(cleanPassword, adminPassword.Trim(), StringComparison.Ordinal)
-                    || (adminPassword.Trim() == "@@abc123@@" && cleanPassword == "@abc123@@")
-                    || (cleanPassword == "@@abc123@@");
+                bool adminPassMatch = string.Equals(cleanPassword, adminPassword.Trim(), StringComparison.Ordinal);
 
                 if (adminPassMatch)
                 {
@@ -102,9 +100,7 @@ namespace _08_VuTriDung_Assignment02.Repositories
                 var account = SystemAccountDAO.Instance.GetByEmail(cleanEmail);
                 if (account != null)
                 {
-                    bool passwordMatch = string.Equals(account.AccountPassword?.Trim(), cleanPassword, StringComparison.Ordinal)
-                        || (account.AccountPassword?.Trim() == "@1" && cleanPassword == "@@1")
-                        || (account.AccountPassword?.Trim() == "@@1" && cleanPassword == "@1");
+                    bool passwordMatch = string.Equals(account.AccountPassword?.Trim(), cleanPassword, StringComparison.Ordinal);
 
                     if (passwordMatch)
                     {
@@ -141,35 +137,35 @@ namespace _08_VuTriDung_Assignment02.Repositories
             }
 
             // Fallback for default seed accounts in case database is starting up
-            var defaultAccounts = new[]
-            {
-                new { ID = (short)3, Name = "Isabella David", Email = "isabelladavid@funewsmanagement.org", Role = 1, Password = "@1" },
-                new { ID = (short)4, Name = "Michael Charlotte", Email = "michaelcharlotte@funewsmanagement.org", Role = 1, Password = "@1" },
-                new { ID = (short)5, Name = "Steve Paris", Email = "steveparis@funewsmanagement.org", Role = 1, Password = "@1" },
-                new { ID = (short)1, Name = "Emma William", Email = "emmawilliam@funewsmanagement.org", Role = 2, Password = "@1" },
-                new { ID = (short)2, Name = "Olivia James", Email = "oliviajames@funewsmanagement.org", Role = 2, Password = "@1" }
-            };
+            //var defaultAccounts = new[]
+            //{
+            //    new { ID = (short)3, Name = "Isabella David", Email = "isabelladavid@funewsmanagement.org", Role = 1, Password = "@1" },
+            //    new { ID = (short)4, Name = "Michael Charlotte", Email = "michaelcharlotte@funewsmanagement.org", Role = 1, Password = "@1" },
+            //    new { ID = (short)5, Name = "Steve Paris", Email = "steveparis@funewsmanagement.org", Role = 1, Password = "@1" },
+            //    new { ID = (short)1, Name = "Emma William", Email = "emmawilliam@funewsmanagement.org", Role = 2, Password = "@1" },
+            //    new { ID = (short)2, Name = "Olivia James", Email = "oliviajames@funewsmanagement.org", Role = 2, Password = "@1" }
+            //};
 
-            var fallbackMatch = defaultAccounts.FirstOrDefault(a => string.Equals(a.Email, cleanEmail, StringComparison.OrdinalIgnoreCase));
-            if (fallbackMatch != null)
-            {
-                bool passwordMatch = string.Equals(fallbackMatch.Password, cleanPassword, StringComparison.Ordinal)
-                    || (fallbackMatch.Password == "@1" && cleanPassword == "@@1");
+            //var fallbackMatch = defaultAccounts.FirstOrDefault(a => string.Equals(a.Email, cleanEmail, StringComparison.OrdinalIgnoreCase));
+            //if (fallbackMatch != null)
+            //{
+            //    bool passwordMatch = string.Equals(fallbackMatch.Password, cleanPassword, StringComparison.Ordinal)
+            //        || (fallbackMatch.Password == "@1" && cleanPassword == "@@1");
 
-                if (passwordMatch)
-                {
-                    string roleName = fallbackMatch.Role == 1 ? "Staff" : "Lecturer";
-                    var token = _jwtService.GenerateToken(fallbackMatch.ID, fallbackMatch.Email, roleName, fallbackMatch.Name);
-                    return new LoginResponseDTO
-                    {
-                        Token = token,
-                        Role = roleName,
-                        Email = fallbackMatch.Email,
-                        AccountId = fallbackMatch.ID,
-                        AccountName = fallbackMatch.Name
-                    };
-                }
-            }
+            //    if (passwordMatch)
+            //    {
+            //        string roleName = fallbackMatch.Role == 1 ? "Staff" : "Lecturer";
+            //        var token = _jwtService.GenerateToken(fallbackMatch.ID, fallbackMatch.Email, roleName, fallbackMatch.Name);
+            //        return new LoginResponseDTO
+            //        {
+            //            Token = token,
+            //            Role = roleName,
+            //            Email = fallbackMatch.Email,
+            //            AccountId = fallbackMatch.ID,
+            //            AccountName = fallbackMatch.Name
+            //        };
+            //    }
+            //}
 
             return null;
         }

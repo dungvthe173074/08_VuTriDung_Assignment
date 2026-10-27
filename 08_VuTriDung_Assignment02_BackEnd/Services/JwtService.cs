@@ -16,10 +16,10 @@ namespace _08_VuTriDung_Assignment02.Services
 
         public string GenerateToken(short accountId, string email, string role, string accountName)
         {
-            var keyString = _configuration["Jwt:Key"] ?? "A_Very_Strong_Secret_Key_At_Least_32_Characters_Long!";
-            var issuer = _configuration["Jwt:Issuer"] ?? "FUNewsManagementApi";
-            var audience = _configuration["Jwt:Audience"] ?? "FUNewsManagementClient";
-            var expireMinutes = double.TryParse(_configuration["Jwt:ExpireMinutes"], out var minutes) ? minutes : 60;
+            var keyString = _configuration["Jwt:Key"];
+            var issuer = _configuration["Jwt:Issuer"];
+            var audience = _configuration["Jwt:Audience"];
+            var expireMinutes = int.TryParse(_configuration["Jwt:ExpireMinutes"], out var minutes) ? minutes : 60;
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
