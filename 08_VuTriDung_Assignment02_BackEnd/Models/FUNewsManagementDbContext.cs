@@ -5,7 +5,32 @@ namespace _08_VuTriDung_Assignment02.Models
 {
     public class FUNewsManagementDbContext : DbContext
     {
-        public FUNewsManagementDbContext()
+        private static DbContextOptions<FUNewsManagementDbContext>? _options;
+
+        private static DbContextOptions<FUNewsManagementDbContext> GetOptions()
+        {
+            if (_options == null)
+            {
+                var basePath = Directory.GetCurrentDirectory();
+                if (!File.Exists(Path.Combine(basePath, "appsettings.json")))
+                {
+                    basePath = AppDomain.CurrentDomain.BaseDirectory;
+                }
+
+                var builder = new ConfigurationBuilder()
+                    .SetBasePath(basePath)
+                    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+                var config = builder.Build();
+                var connectionString = config.GetConnectionString("MyCnn");
+
+                var optionsBuilder = new DbContextOptionsBuilder<FUNewsManagementDbContext>();
+                optionsBuilder.UseSqlServer(connectionString);
+                _options = optionsBuilder.Options;
+            }
+            return _options;
+        }
+
+        public FUNewsManagementDbContext() : base(GetOptions())
         {
         }
 
@@ -22,15 +47,6 @@ namespace _08_VuTriDung_Assignment02.Models
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            if (!optionsBuilder.IsConfigured)
-            {
-                var builder = new ConfigurationBuilder()
-                    .SetBasePath(Directory.GetCurrentDirectory())
-                    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-                var config = builder.Build();
-                var connectionString = config.GetConnectionString("MyCnn");
-                optionsBuilder.UseSqlServer(connectionString);
-            }
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
