@@ -14,45 +14,20 @@ namespace _08_VuTriDung_Assignment02.Controllers
     public class NewsArticlesController : ODataController
     {
         private readonly INewsArticleRepository _newsArticleRepository;
+        private readonly ICategoryRepository _categoryRepository;
 
-        public NewsArticlesController(INewsArticleRepository newsArticleRepository)
+        public NewsArticlesController(INewsArticleRepository newsArticleRepository, ICategoryRepository categoryRepository)
         {
             _newsArticleRepository = newsArticleRepository;
-        }
-
-        private static NewsArticleDTO MapToDTO(NewsArticle n)
-        {
-            return new NewsArticleDTO
-            {
-                NewsArticleID = n.NewsArticleID,
-                NewsTitle = n.NewsTitle,
-                Headline = n.Headline,
-                CreatedDate = n.CreatedDate,
-                NewsContent = n.NewsContent,
-                NewsSource = n.NewsSource,
-                CategoryID = n.CategoryID,
-                CategoryName = n.Category?.CategoryName,
-                NewsStatus = n.NewsStatus,
-                CreatedByID = n.CreatedByID,
-                CreatedByName = n.CreatedBy?.AccountName,
-                UpdatedByID = n.UpdatedByID,
-                ModifiedDate = n.ModifiedDate,
-                TagIDs = n.NewsTags.Select(nt => nt.TagID).ToList(),
-                Tags = n.NewsTags.Where(nt => nt.Tag != null).Select(nt => new TagDTO
-                {
-                    TagID = nt.TagID,
-                    TagName = nt.Tag?.TagName,
-                    Note = nt.Tag?.Note
-                }).ToList()
-            };
+            _categoryRepository = categoryRepository;
         }
 
         [HttpGet]
-        [Authorize(Roles = "Staff,Admin")]
+        [AllowAnonymous]
         [EnableQuery]
         public IActionResult Get()
         {
-            var articles = _newsArticleRepository.GetAll().Select(MapToDTO).AsQueryable();
+            var articles = _newsArticleRepository.GetAll();
             return Ok(articles);
         }
 
@@ -61,7 +36,7 @@ namespace _08_VuTriDung_Assignment02.Controllers
         [EnableQuery]
         public IActionResult GetActive()
         {
-            var activeArticles = _newsArticleRepository.GetActive().Select(MapToDTO).AsQueryable();
+            var activeArticles = _newsArticleRepository.GetActive();
             return Ok(activeArticles);
         }
 
@@ -75,7 +50,7 @@ namespace _08_VuTriDung_Assignment02.Controllers
                 return Unauthorized(new { message = "Invalid token claims." });
             }
 
-            var articles = _newsArticleRepository.GetByCreatedBy(accountId).Select(MapToDTO).ToList();
+            var articles = _newsArticleRepository.GetByCreatedBy(accountId);
             return Ok(articles);
         }
 
@@ -83,7 +58,7 @@ namespace _08_VuTriDung_Assignment02.Controllers
         [Authorize(Roles = "Staff")]
         public IActionResult GetMyHistory([FromRoute] short accountId)
         {
-            var articles = _newsArticleRepository.GetByCreatedBy(accountId).Select(MapToDTO).ToList();
+            var articles = _newsArticleRepository.GetByCreatedBy(accountId);
             return Ok(articles);
         }
 
@@ -91,7 +66,7 @@ namespace _08_VuTriDung_Assignment02.Controllers
         [Authorize(Roles = "Admin")]
         public IActionResult GetReport([FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate)
         {
-            var articles = _newsArticleRepository.GetReport(startDate, endDate).Select(MapToDTO).ToList();
+            var articles = _newsArticleRepository.GetReport(startDate, endDate);
             return Ok(articles);
         }
 
@@ -104,7 +79,8 @@ namespace _08_VuTriDung_Assignment02.Controllers
             {
                 return NotFound(new { message = $"News article with ID {id} not found." });
             }
-            return Ok(MapToDTO(article));
+
+            return Ok(article);
         }
 
         [HttpPost]
@@ -116,8 +92,7 @@ namespace _08_VuTriDung_Assignment02.Controllers
                 return BadRequest(ModelState);
             }
 
-            var existing = _newsArticleRepository.GetById(dto.NewsArticleID);
-            if (existing != null)
+            if (!string.IsNullOrWhiteSpace(dto.NewsArticleID) && _newsArticleRepository.Exists(dto.NewsArticleID))
             {
                 return BadRequest(new { message = $"News article with ID {dto.NewsArticleID} already exists." });
             }
@@ -132,9 +107,23 @@ namespace _08_VuTriDung_Assignment02.Controllers
                 }
             }
 
+            // Category validation
+            if (dto.CategoryID.HasValue)
+            {
+                var category = _categoryRepository.GetById(dto.CategoryID.Value);
+                if (category == null || category.IsActive != true)
+                {
+                    return BadRequest(new { message = "Category must exist and be active to assign to an article." });
+                }
+            }
+
+            var articleId = string.IsNullOrWhiteSpace(dto.NewsArticleID)
+                ? Guid.NewGuid().ToString("N")[..10]
+                : dto.NewsArticleID;
+
             var article = new NewsArticle
             {
-                NewsArticleID = dto.NewsArticleID,
+                NewsArticleID = articleId,
                 NewsTitle = dto.NewsTitle,
                 Headline = dto.Headline,
                 CreatedDate = dto.CreatedDate ?? DateTime.Now,
@@ -143,12 +132,12 @@ namespace _08_VuTriDung_Assignment02.Controllers
                 CategoryID = dto.CategoryID,
                 NewsStatus = dto.NewsStatus ?? true,
                 CreatedByID = createdById,
-                UpdatedByID = dto.UpdatedByID,
+                UpdatedByID = createdById,
                 ModifiedDate = DateTime.Now
             };
 
             var created = _newsArticleRepository.Create(article, dto.TagIDs);
-            return CreatedAtAction(nameof(GetById), new { id = created.NewsArticleID }, MapToDTO(created));
+            return CreatedAtAction(nameof(GetById), new { id = created.NewsArticleID }, created);
         }
 
         [HttpPut("{id}")]
@@ -160,47 +149,50 @@ namespace _08_VuTriDung_Assignment02.Controllers
                 return BadRequest(ModelState);
             }
 
-            var existing = _newsArticleRepository.GetById(id);
-            if (existing == null)
+            if (!_newsArticleRepository.Exists(id))
             {
                 return NotFound(new { message = $"News article with ID {id} not found." });
             }
 
             short? updatedById = dto.UpdatedByID;
-            if (!updatedById.HasValue || updatedById.Value <= 0)
+            var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (short.TryParse(idClaim, out var claimId))
             {
-                var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (short.TryParse(idClaim, out var claimId))
+                updatedById = claimId;
+            }
+
+            // Category validation
+            if (dto.CategoryID.HasValue)
+            {
+                var category = _categoryRepository.GetById(dto.CategoryID.Value);
+                if (category == null || category.IsActive != true)
                 {
-                    updatedById = claimId;
+                    return BadRequest(new { message = "Category must exist and be active to assign to an article." });
                 }
             }
 
-            existing.NewsTitle = dto.NewsTitle;
-            existing.Headline = dto.Headline;
-            existing.NewsContent = dto.NewsContent;
-            existing.NewsSource = dto.NewsSource;
-            existing.CategoryID = dto.CategoryID;
-            existing.NewsStatus = dto.NewsStatus;
-            existing.UpdatedByID = updatedById;
-
-            var updated = _newsArticleRepository.Update(existing, dto.TagIDs);
+            var updated = _newsArticleRepository.Update(id, dto, updatedById);
             if (updated == null)
             {
                 return StatusCode(500, new { message = "Error updating article." });
             }
 
-            return Ok(MapToDTO(updated));
+            return Ok(updated);
         }
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "Staff")]
         public IActionResult Delete([FromRoute] string id)
         {
+            if (!_newsArticleRepository.Exists(id))
+            {
+                return NotFound(new { message = $"News article with ID {id} not found." });
+            }
+
             var deleted = _newsArticleRepository.Delete(id);
             if (!deleted)
             {
-                return NotFound(new { message = $"News article with ID {id} not found." });
+                return StatusCode(500, new { message = "Error deleting article." });
             }
 
             return Ok(new { message = "News article deleted successfully." });

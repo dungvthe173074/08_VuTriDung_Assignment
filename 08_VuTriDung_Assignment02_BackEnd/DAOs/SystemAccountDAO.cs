@@ -5,91 +5,101 @@ namespace _08_VuTriDung_Assignment02.DAOs
 {
     public class SystemAccountDAO
     {
-        private static SystemAccountDAO? _instance;
-        private static readonly object _instanceLock = new object();
+        private readonly FUNewsManagementDbContext _context;
 
-        private SystemAccountDAO() { }
-
-        public static SystemAccountDAO Instance
+        public SystemAccountDAO(FUNewsManagementDbContext context)
         {
-            get
-            {
-                lock (_instanceLock)
-                {
-                    if (_instance == null)
-                    {
-                        _instance = new SystemAccountDAO();
-                    }
-                    return _instance;
-                }
-            }
+            _context = context;
         }
 
-        public List<SystemAccount> GetAll()
+        public IQueryable<SystemAccount> GetAll()
         {
-            using var db = new FUNewsManagementDbContext();
-            return db.SystemAccounts.AsNoTracking().ToList();
+            return _context.SystemAccounts.AsNoTracking();
         }
 
-        public SystemAccount? GetById(short id)
+        public SystemAccount? GetById(short id, bool tracking = false)
         {
-            using var db = new FUNewsManagementDbContext();
-            return db.SystemAccounts.AsNoTracking().FirstOrDefault(a => a.AccountID == id);
+            var query = tracking ? _context.SystemAccounts.AsQueryable() : _context.SystemAccounts.AsNoTracking();
+            return query.FirstOrDefault(a => a.AccountID == id);
         }
 
         public SystemAccount? GetByEmail(string email)
         {
-            using var db = new FUNewsManagementDbContext();
-            return db.SystemAccounts.AsNoTracking()
-                .FirstOrDefault(a => a.AccountEmail != null && a.AccountEmail.ToLower() == email.Trim().ToLower());
+            var clean = email.Trim().ToLower();
+            return _context.SystemAccounts.AsNoTracking()
+                .FirstOrDefault(a => a.AccountEmail != null && a.AccountEmail.ToLower() == clean);
+        }
+
+        public bool EmailExists(string email, short? excludeId = null)
+        {
+            var clean = email.Trim().ToLower();
+            return _context.SystemAccounts.Any(a => a.AccountEmail != null && 
+                                                    a.AccountEmail.ToLower() == clean && 
+                                                    (!excludeId.HasValue || a.AccountID != excludeId.Value));
         }
 
         public SystemAccount Create(SystemAccount account)
         {
-            using var db = new FUNewsManagementDbContext();
             if (account.AccountID == 0)
             {
-                short maxId = db.SystemAccounts.Any() ? db.SystemAccounts.Max(a => a.AccountID) : (short)0;
+                short maxId = _context.SystemAccounts.Any() ? _context.SystemAccounts.Max(a => a.AccountID) : (short)0;
                 account.AccountID = (short)(maxId + 1);
             }
-            db.SystemAccounts.Add(account);
-            db.SaveChanges();
+            _context.SystemAccounts.Add(account);
+            _context.SaveChanges();
             return account;
         }
 
-        public SystemAccount? Update(SystemAccount account)
+        public SystemAccount? Update(short id, string? name, string? email, string? password, int? role = null)
         {
-            using var db = new FUNewsManagementDbContext();
-            var existing = db.SystemAccounts.FirstOrDefault(a => a.AccountID == account.AccountID);
+            var existing = _context.SystemAccounts.FirstOrDefault(a => a.AccountID == id);
             if (existing == null) return null;
 
-            existing.AccountName = account.AccountName;
-            existing.AccountEmail = account.AccountEmail;
-            existing.AccountRole = account.AccountRole;
-            if (!string.IsNullOrEmpty(account.AccountPassword))
+            if (!string.IsNullOrWhiteSpace(name))
             {
-                existing.AccountPassword = account.AccountPassword;
+                existing.AccountName = name;
             }
 
-            db.SaveChanges();
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                existing.AccountEmail = email.Trim();
+            }
+
+            if (!string.IsNullOrEmpty(password))
+            {
+                existing.AccountPassword = password;
+            }
+
+            if (role.HasValue)
+            {
+                existing.AccountRole = role.Value;
+            }
+
+            _context.SaveChanges();
             return existing;
         }
 
         public bool HasCreatedArticles(short accountId)
         {
-            using var db = new FUNewsManagementDbContext();
-            return db.NewsArticles.Any(n => n.CreatedByID == accountId);
+            return _context.NewsArticles.Any(n => n.CreatedByID == accountId);
         }
 
-        public bool Delete(short id)
+        public (bool Success, string? ErrorMessage) Delete(short id)
         {
-            using var db = new FUNewsManagementDbContext();
-            var existing = db.SystemAccounts.FirstOrDefault(a => a.AccountID == id);
-            if (existing == null) return false;
+            var existing = _context.SystemAccounts.FirstOrDefault(a => a.AccountID == id);
+            if (existing == null)
+            {
+                return (false, $"Account with ID {id} not found.");
+            }
 
-            db.SystemAccounts.Remove(existing);
-            db.SaveChanges();
-            return true;
+            if (HasCreatedArticles(id))
+            {
+                return (false, "Cannot delete account because it has created news articles.");
+            }
+
+            _context.SystemAccounts.Remove(existing);
+            _context.SaveChanges();
+            return (true, null);
         }
     }
 }

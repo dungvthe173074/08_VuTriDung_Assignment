@@ -5,29 +5,21 @@ namespace _08_VuTriDung_Assignment02.Repositories
 {
     public class TagRepository : ITagRepository
     {
-        public IEnumerable<Tag> GetAll()
+        private readonly TagDAO _tagDAO;
+
+        public TagRepository(TagDAO tagDAO)
         {
-            return TagDAO.Instance.GetAll();
+            _tagDAO = tagDAO;
         }
 
-        public Tag? GetById(int id)
-        {
-            return TagDAO.Instance.GetById(id);
-        }
+        public IQueryable<Tag> GetAll() => _tagDAO.GetAll();
 
-        public Tag Create(Tag tag)
-        {
-            return TagDAO.Instance.Create(tag);
-        }
+        public Tag? GetById(int id) => _tagDAO.GetById(id);
 
-        public Tag? Update(Tag tag)
-        {
-            return TagDAO.Instance.Update(tag);
-        }
+        public Tag Create(Tag tag) => _tagDAO.Create(tag);
 
-        public bool Delete(int id)
-        {
-            return TagDAO.Instance.Delete(id);
-        }
+        public Tag? Update(int id, Tag tag) => _tagDAO.Update(id, tag);
+
+        public bool Delete(int id) => _tagDAO.Delete(id);
     }
 }

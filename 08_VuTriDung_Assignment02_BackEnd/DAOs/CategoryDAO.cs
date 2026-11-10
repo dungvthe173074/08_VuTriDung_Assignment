@@ -5,39 +5,23 @@ namespace _08_VuTriDung_Assignment02.DAOs
 {
     public class CategoryDAO
     {
-        private static CategoryDAO? _instance;
-        private static readonly object _instanceLock = new object();
+        private readonly FUNewsManagementDbContext _context;
 
-        private CategoryDAO() { }
-
-        public static CategoryDAO Instance
+        public CategoryDAO(FUNewsManagementDbContext context)
         {
-            get
-            {
-                lock (_instanceLock)
-                {
-                    if (_instance == null)
-                    {
-                        _instance = new CategoryDAO();
-                    }
-                    return _instance;
-                }
-            }
+            _context = context;
         }
 
-        public List<Category> GetAll()
+        public IQueryable<Category> GetAll()
         {
-            using var db = new FUNewsManagementDbContext();
-            return db.Categories
+            return _context.Categories
                 .Include(c => c.ParentCategory)
-                .AsNoTracking()
-                .ToList();
+                .AsNoTracking();
         }
 
         public Category? GetById(short id)
         {
-            using var db = new FUNewsManagementDbContext();
-            return db.Categories
+            return _context.Categories
                 .Include(c => c.ParentCategory)
                 .AsNoTracking()
                 .FirstOrDefault(c => c.CategoryID == id);
@@ -45,42 +29,46 @@ namespace _08_VuTriDung_Assignment02.DAOs
 
         public Category Create(Category category)
         {
-            using var db = new FUNewsManagementDbContext();
-            db.Categories.Add(category);
-            db.SaveChanges();
+            _context.Categories.Add(category);
+            _context.SaveChanges();
             return category;
         }
 
-        public Category? Update(Category category)
+        public Category? Update(short id, Category updated)
         {
-            using var db = new FUNewsManagementDbContext();
-            var existing = db.Categories.FirstOrDefault(c => c.CategoryID == category.CategoryID);
+            var existing = _context.Categories.FirstOrDefault(c => c.CategoryID == id);
             if (existing == null) return null;
 
-            existing.CategoryName = category.CategoryName;
-            existing.CategoryDesciption = category.CategoryDesciption;
-            existing.ParentCategoryID = category.ParentCategoryID;
-            existing.IsActive = category.IsActive;
+            existing.CategoryName = updated.CategoryName;
+            existing.CategoryDesciption = updated.CategoryDesciption;
+            existing.ParentCategoryID = updated.ParentCategoryID;
+            existing.IsActive = updated.IsActive;
 
-            db.SaveChanges();
+            _context.SaveChanges();
             return existing;
         }
 
         public bool HasArticles(short categoryId)
         {
-            using var db = new FUNewsManagementDbContext();
-            return db.NewsArticles.Any(n => n.CategoryID == categoryId);
+            return _context.NewsArticles.Any(n => n.CategoryID == categoryId);
         }
 
-        public bool Delete(short id)
+        public (bool Success, string? ErrorMessage) Delete(short id)
         {
-            using var db = new FUNewsManagementDbContext();
-            var existing = db.Categories.FirstOrDefault(c => c.CategoryID == id);
-            if (existing == null) return false;
+            var existing = _context.Categories.FirstOrDefault(c => c.CategoryID == id);
+            if (existing == null)
+            {
+                return (false, $"Category with ID {id} not found.");
+            }
 
-            db.Categories.Remove(existing);
-            db.SaveChanges();
-            return true;
+            if (HasArticles(id))
+            {
+                return (false, "Cannot delete category because it contains news articles.");
+            }
+
+            _context.Categories.Remove(existing);
+            _context.SaveChanges();
+            return (true, null);
         }
     }
 }

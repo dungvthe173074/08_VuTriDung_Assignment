@@ -24,7 +24,7 @@ namespace _08_VuTriDung_Assignment02.Controllers
         [EnableQuery]
         public IActionResult Get()
         {
-            var categories = _categoryRepository.GetAll().AsQueryable();
+            var categories = _categoryRepository.GetAll();
             return Ok(categories);
         }
 
@@ -71,18 +71,21 @@ namespace _08_VuTriDung_Assignment02.Controllers
                 return BadRequest(ModelState);
             }
 
-            var existing = _categoryRepository.GetById(id);
-            if (existing == null)
+            var category = new Category
+            {
+                CategoryID = id,
+                CategoryName = dto.CategoryName,
+                CategoryDesciption = dto.CategoryDesciption,
+                ParentCategoryID = dto.ParentCategoryID,
+                IsActive = dto.IsActive
+            };
+
+            var updated = _categoryRepository.Update(id, category);
+            if (updated == null)
             {
                 return NotFound(new { message = $"Category with ID {id} not found." });
             }
 
-            existing.CategoryName = dto.CategoryName;
-            existing.CategoryDesciption = dto.CategoryDesciption;
-            existing.ParentCategoryID = dto.ParentCategoryID;
-            existing.IsActive = dto.IsActive;
-
-            var updated = _categoryRepository.Update(existing);
             return Ok(updated);
         }
 

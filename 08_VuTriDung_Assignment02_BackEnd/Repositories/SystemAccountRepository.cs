@@ -8,56 +8,38 @@ namespace _08_VuTriDung_Assignment02.Repositories
 {
     public class SystemAccountRepository : ISystemAccountRepository
     {
+        private readonly SystemAccountDAO _accountDAO;
         private readonly IConfiguration _configuration;
         private readonly IJwtService _jwtService;
 
-        public SystemAccountRepository(IConfiguration configuration, IJwtService jwtService)
+        public SystemAccountRepository(SystemAccountDAO accountDAO, IConfiguration configuration, IJwtService jwtService)
         {
+            _accountDAO = accountDAO;
             _configuration = configuration;
             _jwtService = jwtService;
         }
 
-        public IEnumerable<SystemAccount> GetAll()
+        public IQueryable<SystemAccount> GetAll() => _accountDAO.GetAll();
+
+        public SystemAccount? GetById(short id) => _accountDAO.GetById(id);
+
+        public SystemAccount? GetByEmail(string email) => _accountDAO.GetByEmail(email);
+
+        public bool EmailExists(string email, short? excludeId = null) => _accountDAO.EmailExists(email, excludeId);
+
+        public SystemAccount Create(SystemAccount account) => _accountDAO.Create(account);
+
+        public SystemAccount? UpdateProfile(short id, string? name, string? email, string? password)
         {
-            return SystemAccountDAO.Instance.GetAll();
+            return _accountDAO.Update(id, name, email, password);
         }
 
-        public SystemAccount? GetById(short id)
+        public SystemAccount? UpdateAccount(short id, string? name, string? email, string? password, int role)
         {
-            return SystemAccountDAO.Instance.GetById(id);
+            return _accountDAO.Update(id, name, email, password, role);
         }
 
-        public SystemAccount? GetByEmail(string email)
-        {
-            return SystemAccountDAO.Instance.GetByEmail(email);
-        }
-
-        public SystemAccount Create(SystemAccount account)
-        {
-            return SystemAccountDAO.Instance.Create(account);
-        }
-
-        public SystemAccount? Update(SystemAccount account)
-        {
-            return SystemAccountDAO.Instance.Update(account);
-        }
-
-        public (bool Success, string? ErrorMessage) Delete(short id)
-        {
-            // Strict constraint: cannot delete if account has created any news articles
-            if (SystemAccountDAO.Instance.HasCreatedArticles(id))
-            {
-                return (false, "Cannot delete account because it has created news articles.");
-            }
-
-            bool deleted = SystemAccountDAO.Instance.Delete(id);
-            if (!deleted)
-            {
-                return (false, "Account not found or could not be deleted.");
-            }
-
-            return (true, null);
-        }
+        public (bool Success, string? ErrorMessage) Delete(short id) => _accountDAO.Delete(id);
 
         public LoginResponseDTO? Authenticate(string email, string password)
         {
@@ -70,14 +52,12 @@ namespace _08_VuTriDung_Assignment02.Repositories
             var cleanPassword = password.Trim();
 
             // 1. Check Admin Credentials from appsettings.json
-            var adminEmail = _configuration["AdminAccount:Email"];
-            var adminPassword = _configuration["AdminAccount:Password"];
+            var adminEmail = _configuration["AdminAccount:Email"] ?? "";
+            var adminPassword = _configuration["AdminAccount:Password"] ?? "";
 
-            if (string.Equals(cleanEmail, adminEmail.Trim(), StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(adminEmail) && string.Equals(cleanEmail, adminEmail.Trim(), StringComparison.OrdinalIgnoreCase))
             {
-                bool adminPassMatch = string.Equals(cleanPassword, adminPassword.Trim(), StringComparison.Ordinal);
-
-                if (adminPassMatch)
+                if (string.Equals(cleanPassword, adminPassword.Trim(), StringComparison.Ordinal))
                 {
                     var token = _jwtService.GenerateToken(0, adminEmail.Trim(), "Admin", "Administrator");
                     return new LoginResponseDTO
@@ -90,82 +70,42 @@ namespace _08_VuTriDung_Assignment02.Repositories
                     };
                 }
 
-                // Admin email with incorrect password
                 return null;
             }
 
-            // 2. Check Database for Staff / Lecturer
-            try
+            // 2. Check Database for Staff / Lecturer via SystemAccountDAO
+            var account = _accountDAO.GetByEmail(cleanEmail);
+            if (account != null)
             {
-                var account = SystemAccountDAO.Instance.GetByEmail(cleanEmail);
-                if (account != null)
+                bool passwordMatch = string.Equals(account.AccountPassword?.Trim(), cleanPassword, StringComparison.Ordinal);
+                if (passwordMatch)
                 {
-                    bool passwordMatch = string.Equals(account.AccountPassword?.Trim(), cleanPassword, StringComparison.Ordinal);
-
-                    if (passwordMatch)
+                    string? roleName = account.AccountRole switch
                     {
-                        string? roleName = account.AccountRole switch
-                        {
-                            1 => "Staff",
-                            2 => "Lecturer",
-                            _ => null
-                        };
+                        1 => "Staff",
+                        2 => "Lecturer",
+                        _ => null
+                    };
 
-                        if (string.IsNullOrEmpty(roleName))
-                        {
-                            return null;
-                        }
-
-                        var accountName = string.IsNullOrWhiteSpace(account.AccountName) ? (account.AccountEmail ?? "User") : account.AccountName;
-                        var accountEmail = account.AccountEmail ?? cleanEmail;
-                        var token = _jwtService.GenerateToken(account.AccountID, accountEmail, roleName, accountName);
-
-                        return new LoginResponseDTO
-                        {
-                            Token = token,
-                            Role = roleName,
-                            Email = accountEmail,
-                            AccountId = account.AccountID,
-                            AccountName = accountName
-                        };
+                    if (string.IsNullOrEmpty(roleName))
+                    {
+                        return null;
                     }
+
+                    var accountName = string.IsNullOrWhiteSpace(account.AccountName) ? (account.AccountEmail ?? "User") : account.AccountName;
+                    var accountEmail = account.AccountEmail ?? cleanEmail;
+                    var token = _jwtService.GenerateToken(account.AccountID, accountEmail, roleName, accountName);
+
+                    return new LoginResponseDTO
+                    {
+                        Token = token,
+                        Role = roleName,
+                        Email = accountEmail,
+                        AccountId = account.AccountID,
+                        AccountName = accountName
+                    };
                 }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Database access error during authentication: {ex.Message}");
-            }
-
-            // Fallback for default seed accounts in case database is starting up
-            //var defaultAccounts = new[]
-            //{
-            //    new { ID = (short)3, Name = "Isabella David", Email = "isabelladavid@funewsmanagement.org", Role = 1, Password = "@1" },
-            //    new { ID = (short)4, Name = "Michael Charlotte", Email = "michaelcharlotte@funewsmanagement.org", Role = 1, Password = "@1" },
-            //    new { ID = (short)5, Name = "Steve Paris", Email = "steveparis@funewsmanagement.org", Role = 1, Password = "@1" },
-            //    new { ID = (short)1, Name = "Emma William", Email = "emmawilliam@funewsmanagement.org", Role = 2, Password = "@1" },
-            //    new { ID = (short)2, Name = "Olivia James", Email = "oliviajames@funewsmanagement.org", Role = 2, Password = "@1" }
-            //};
-
-            //var fallbackMatch = defaultAccounts.FirstOrDefault(a => string.Equals(a.Email, cleanEmail, StringComparison.OrdinalIgnoreCase));
-            //if (fallbackMatch != null)
-            //{
-            //    bool passwordMatch = string.Equals(fallbackMatch.Password, cleanPassword, StringComparison.Ordinal)
-            //        || (fallbackMatch.Password == "@1" && cleanPassword == "@@1");
-
-            //    if (passwordMatch)
-            //    {
-            //        string roleName = fallbackMatch.Role == 1 ? "Staff" : "Lecturer";
-            //        var token = _jwtService.GenerateToken(fallbackMatch.ID, fallbackMatch.Email, roleName, fallbackMatch.Name);
-            //        return new LoginResponseDTO
-            //        {
-            //            Token = token,
-            //            Role = roleName,
-            //            Email = fallbackMatch.Email,
-            //            AccountId = fallbackMatch.ID,
-            //            AccountName = fallbackMatch.Name
-            //        };
-            //    }
-            //}
 
             return null;
         }

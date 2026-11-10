@@ -4,10 +4,10 @@ namespace _08_VuTriDung_Assignment02.Repositories
 {
     public interface ICategoryRepository
     {
-        IEnumerable<Category> GetAll();
+        IQueryable<Category> GetAll();
         Category? GetById(short id);
         Category Create(Category category);
-        Category? Update(Category category);
+        Category? Update(short id, Category category);
         (bool Success, string? ErrorMessage) Delete(short id);
     }
 }

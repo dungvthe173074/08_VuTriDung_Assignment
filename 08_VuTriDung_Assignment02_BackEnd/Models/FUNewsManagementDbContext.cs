@@ -1,36 +1,10 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 
 namespace _08_VuTriDung_Assignment02.Models
 {
     public class FUNewsManagementDbContext : DbContext
     {
-        private static DbContextOptions<FUNewsManagementDbContext>? _options;
-
-        private static DbContextOptions<FUNewsManagementDbContext> GetOptions()
-        {
-            if (_options == null)
-            {
-                var basePath = Directory.GetCurrentDirectory();
-                if (!File.Exists(Path.Combine(basePath, "appsettings.json")))
-                {
-                    basePath = AppDomain.CurrentDomain.BaseDirectory;
-                }
-
-                var builder = new ConfigurationBuilder()
-                    .SetBasePath(basePath)
-                    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-                var config = builder.Build();
-                var connectionString = config.GetConnectionString("MyCnn");
-
-                var optionsBuilder = new DbContextOptionsBuilder<FUNewsManagementDbContext>();
-                optionsBuilder.UseSqlServer(connectionString);
-                _options = optionsBuilder.Options;
-            }
-            return _options;
-        }
-
-        public FUNewsManagementDbContext() : base(GetOptions())
+        public FUNewsManagementDbContext()
         {
         }
 
@@ -45,9 +19,8 @@ namespace _08_VuTriDung_Assignment02.Models
         public virtual DbSet<SystemAccount> SystemAccounts { get; set; } = null!;
         public virtual DbSet<Tag> Tags { get; set; } = null!;
 
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-        }
+        //protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        //    => optionsBuilder.UseSqlServer("Name=ConnectionStrings:MyCnn");
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

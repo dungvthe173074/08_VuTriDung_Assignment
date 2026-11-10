@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OData.Edm;
 using Microsoft.OData.ModelBuilder;
 using Microsoft.OpenApi.Models;
+using _08_VuTriDung_Assignment02.DAOs;
 using _08_VuTriDung_Assignment02.DTOs;
 using _08_VuTriDung_Assignment02.Models;
 using _08_VuTriDung_Assignment02.Repositories;
@@ -23,12 +24,20 @@ builder.Services.AddDataProtection()
 builder.Services.AddDbContext<FUNewsManagementDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn")));
 
-// 2. Register Services & Repositories (3-Tier Architecture)
+// 2. Register Services, DAOs, and Repositories (3-Tier Architecture)
 builder.Services.AddScoped<IJwtService, JwtService>();
-builder.Services.AddScoped<ISystemAccountRepository, SystemAccountRepository>();
+
+// DAOs (Data Access Objects)
+builder.Services.AddScoped<CategoryDAO>();
+builder.Services.AddScoped<TagDAO>();
+builder.Services.AddScoped<SystemAccountDAO>();
+builder.Services.AddScoped<NewsArticleDAO>();
+
+// Repositories
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
-builder.Services.AddScoped<INewsArticleRepository, NewsArticleRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
+builder.Services.AddScoped<ISystemAccountRepository, SystemAccountRepository>();
+builder.Services.AddScoped<INewsArticleRepository, NewsArticleRepository>();
 
 // 3. Configure JWT Authentication & Authorization
 var jwtSettings = builder.Configuration.GetSection("Jwt");

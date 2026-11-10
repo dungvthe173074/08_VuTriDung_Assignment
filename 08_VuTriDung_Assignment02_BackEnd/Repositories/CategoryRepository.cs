@@ -5,41 +5,21 @@ namespace _08_VuTriDung_Assignment02.Repositories
 {
     public class CategoryRepository : ICategoryRepository
     {
-        public IEnumerable<Category> GetAll()
+        private readonly CategoryDAO _categoryDAO;
+
+        public CategoryRepository(CategoryDAO categoryDAO)
         {
-            return CategoryDAO.Instance.GetAll();
+            _categoryDAO = categoryDAO;
         }
 
-        public Category? GetById(short id)
-        {
-            return CategoryDAO.Instance.GetById(id);
-        }
+        public IQueryable<Category> GetAll() => _categoryDAO.GetAll();
 
-        public Category Create(Category category)
-        {
-            return CategoryDAO.Instance.Create(category);
-        }
+        public Category? GetById(short id) => _categoryDAO.GetById(id);
 
-        public Category? Update(Category category)
-        {
-            return CategoryDAO.Instance.Update(category);
-        }
+        public Category Create(Category category) => _categoryDAO.Create(category);
 
-        public (bool Success, string? ErrorMessage) Delete(short id)
-        {
-            // Strict constraint: cannot delete if category has any news articles
-            if (CategoryDAO.Instance.HasArticles(id))
-            {
-                return (false, "Cannot delete category because it contains news articles.");
-            }
+        public Category? Update(short id, Category category) => _categoryDAO.Update(id, category);
 
-            bool deleted = CategoryDAO.Instance.Delete(id);
-            if (!deleted)
-            {
-                return (false, "Category not found or could not be deleted.");
-            }
-
-            return (true, null);
-        }
+        public (bool Success, string? ErrorMessage) Delete(short id) => _categoryDAO.Delete(id);
     }
 }

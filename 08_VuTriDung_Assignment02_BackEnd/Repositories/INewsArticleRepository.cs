@@ -1,16 +1,18 @@
+using _08_VuTriDung_Assignment02.DTOs;
 using _08_VuTriDung_Assignment02.Models;
 
 namespace _08_VuTriDung_Assignment02.Repositories
 {
     public interface INewsArticleRepository
     {
-        IEnumerable<NewsArticle> GetAll();
-        IEnumerable<NewsArticle> GetActive();
-        NewsArticle? GetById(string id);
-        IEnumerable<NewsArticle> GetByCreatedBy(short accountId);
-        IEnumerable<NewsArticle> GetReport(DateTime? startDate, DateTime? endDate);
-        NewsArticle Create(NewsArticle article, List<int>? tagIds);
-        NewsArticle? Update(NewsArticle article, List<int>? tagIds);
+        IQueryable<NewsArticleDTO> GetAll();
+        IQueryable<NewsArticleDTO> GetActive();
+        NewsArticleDTO? GetById(string id);
+        List<NewsArticleDTO> GetByCreatedBy(short accountId);
+        List<NewsArticleDTO> GetReport(DateTime? startDate, DateTime? endDate);
+        bool Exists(string id);
+        NewsArticleDTO Create(NewsArticle article, List<int>? tagIds);
+        NewsArticleDTO? Update(string id, NewsArticleCreateUpdateDTO dto, short? updatedById);
         bool Delete(string id);
     }
 }

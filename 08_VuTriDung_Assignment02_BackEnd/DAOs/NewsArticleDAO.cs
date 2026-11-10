@@ -1,47 +1,55 @@
 using Microsoft.EntityFrameworkCore;
+using _08_VuTriDung_Assignment02.DTOs;
 using _08_VuTriDung_Assignment02.Models;
 
 namespace _08_VuTriDung_Assignment02.DAOs
 {
     public class NewsArticleDAO
     {
-        private static NewsArticleDAO? _instance;
-        private static readonly object _instanceLock = new object();
+        private readonly FUNewsManagementDbContext _context;
 
-        private NewsArticleDAO() { }
-
-        public static NewsArticleDAO Instance
+        public NewsArticleDAO(FUNewsManagementDbContext context)
         {
-            get
-            {
-                lock (_instanceLock)
-                {
-                    if (_instance == null)
-                    {
-                        _instance = new NewsArticleDAO();
-                    }
-                    return _instance;
-                }
-            }
+            _context = context;
         }
 
-        public List<NewsArticle> GetAll()
+        public IQueryable<NewsArticleDTO> GetAll()
         {
-            using var db = new FUNewsManagementDbContext();
-            return db.NewsArticles
+            return _context.NewsArticles
                 .Include(n => n.Category)
                 .Include(n => n.CreatedBy)
                 .Include(n => n.NewsTags)
                     .ThenInclude(nt => nt.Tag)
                 .AsNoTracking()
                 .OrderByDescending(n => n.CreatedDate)
-                .ToList();
+                .Select(n => new NewsArticleDTO
+                {
+                    NewsArticleID = n.NewsArticleID,
+                    NewsTitle = n.NewsTitle,
+                    Headline = n.Headline,
+                    CreatedDate = n.CreatedDate,
+                    NewsContent = n.NewsContent,
+                    NewsSource = n.NewsSource,
+                    CategoryID = n.CategoryID,
+                    CategoryName = n.Category != null ? n.Category.CategoryName : null,
+                    NewsStatus = n.NewsStatus,
+                    CreatedByID = n.CreatedByID,
+                    CreatedByName = n.CreatedBy != null ? n.CreatedBy.AccountName : null,
+                    UpdatedByID = n.UpdatedByID,
+                    ModifiedDate = n.ModifiedDate,
+                    TagIDs = n.NewsTags.Select(nt => nt.TagID).ToList(),
+                    Tags = n.NewsTags.Where(nt => nt.Tag != null).Select(nt => new TagDTO
+                    {
+                        TagID = nt.TagID,
+                        TagName = nt.Tag != null ? nt.Tag.TagName : null,
+                        Note = nt.Tag != null ? nt.Tag.Note : null
+                    }).ToList()
+                });
         }
 
-        public List<NewsArticle> GetActive()
+        public IQueryable<NewsArticleDTO> GetActive()
         {
-            using var db = new FUNewsManagementDbContext();
-            return db.NewsArticles
+            return _context.NewsArticles
                 .Include(n => n.Category)
                 .Include(n => n.CreatedBy)
                 .Include(n => n.NewsTags)
@@ -49,39 +57,44 @@ namespace _08_VuTriDung_Assignment02.DAOs
                 .Where(n => n.NewsStatus == true)
                 .AsNoTracking()
                 .OrderByDescending(n => n.CreatedDate)
-                .ToList();
+                .Select(n => new NewsArticleDTO
+                {
+                    NewsArticleID = n.NewsArticleID,
+                    NewsTitle = n.NewsTitle,
+                    Headline = n.Headline,
+                    CreatedDate = n.CreatedDate,
+                    NewsContent = n.NewsContent,
+                    NewsSource = n.NewsSource,
+                    CategoryID = n.CategoryID,
+                    CategoryName = n.Category != null ? n.Category.CategoryName : null,
+                    NewsStatus = n.NewsStatus,
+                    CreatedByID = n.CreatedByID,
+                    CreatedByName = n.CreatedBy != null ? n.CreatedBy.AccountName : null,
+                    UpdatedByID = n.UpdatedByID,
+                    ModifiedDate = n.ModifiedDate,
+                    TagIDs = n.NewsTags.Select(nt => nt.TagID).ToList(),
+                    Tags = n.NewsTags.Where(nt => nt.Tag != null).Select(nt => new TagDTO
+                    {
+                        TagID = nt.TagID,
+                        TagName = nt.Tag != null ? nt.Tag.TagName : null,
+                        Note = nt.Tag != null ? nt.Tag.Note : null
+                    }).ToList()
+                });
         }
 
-        public NewsArticle? GetById(string id)
+        public NewsArticleDTO? GetById(string id)
         {
-            using var db = new FUNewsManagementDbContext();
-            return db.NewsArticles
-                .Include(n => n.Category)
-                .Include(n => n.CreatedBy)
-                .Include(n => n.NewsTags)
-                    .ThenInclude(nt => nt.Tag)
-                .AsNoTracking()
-                .FirstOrDefault(n => n.NewsArticleID == id);
+            return GetAll().FirstOrDefault(n => n.NewsArticleID == id);
         }
 
-        public List<NewsArticle> GetByCreatedBy(short accountId)
+        public List<NewsArticleDTO> GetByCreatedBy(short accountId)
         {
-            using var db = new FUNewsManagementDbContext();
-            return db.NewsArticles
-                .Include(n => n.Category)
-                .Include(n => n.CreatedBy)
-                .Include(n => n.NewsTags)
-                    .ThenInclude(nt => nt.Tag)
-                .Where(n => n.CreatedByID == accountId)
-                .AsNoTracking()
-                .OrderByDescending(n => n.CreatedDate)
-                .ToList();
+            return GetAll().Where(n => n.CreatedByID == accountId).ToList();
         }
 
-        public List<NewsArticle> GetReport(DateTime? startDate, DateTime? endDate)
+        public List<NewsArticleDTO> GetReport(DateTime? startDate, DateTime? endDate)
         {
-            using var db = new FUNewsManagementDbContext();
-            var query = db.NewsArticles
+            var query = _context.NewsArticles
                 .Include(n => n.Category)
                 .Include(n => n.CreatedBy)
                 .Include(n => n.NewsTags)
@@ -101,16 +114,42 @@ namespace _08_VuTriDung_Assignment02.DAOs
                 query = query.Where(n => n.CreatedDate <= end);
             }
 
-            return query.OrderByDescending(n => n.CreatedDate).ToList();
+            return query.OrderByDescending(n => n.CreatedDate)
+                .Select(n => new NewsArticleDTO
+                {
+                    NewsArticleID = n.NewsArticleID,
+                    NewsTitle = n.NewsTitle,
+                    Headline = n.Headline,
+                    CreatedDate = n.CreatedDate,
+                    NewsContent = n.NewsContent,
+                    NewsSource = n.NewsSource,
+                    CategoryID = n.CategoryID,
+                    CategoryName = n.Category != null ? n.Category.CategoryName : null,
+                    NewsStatus = n.NewsStatus,
+                    CreatedByID = n.CreatedByID,
+                    CreatedByName = n.CreatedBy != null ? n.CreatedBy.AccountName : null,
+                    UpdatedByID = n.UpdatedByID,
+                    ModifiedDate = n.ModifiedDate,
+                    TagIDs = n.NewsTags.Select(nt => nt.TagID).ToList(),
+                    Tags = n.NewsTags.Where(nt => nt.Tag != null).Select(nt => new TagDTO
+                    {
+                        TagID = nt.TagID,
+                        TagName = nt.Tag != null ? nt.Tag.TagName : null,
+                        Note = nt.Tag != null ? nt.Tag.Note : null
+                    }).ToList()
+                })
+                .ToList();
         }
 
-        public NewsArticle Create(NewsArticle article, List<int>? tagIds)
+        public bool Exists(string id)
         {
-            using var db = new FUNewsManagementDbContext();
+            return _context.NewsArticles.Any(n => n.NewsArticleID == id);
+        }
 
+        public NewsArticleDTO Create(NewsArticle article, List<int>? tagIds)
+        {
             if (string.IsNullOrWhiteSpace(article.NewsArticleID))
             {
-                // Auto-generate ID if empty
                 article.NewsArticleID = Guid.NewGuid().ToString("N")[..10];
             }
 
@@ -119,50 +158,48 @@ namespace _08_VuTriDung_Assignment02.DAOs
                 article.CreatedDate = DateTime.Now;
             }
 
-            db.NewsArticles.Add(article);
-            db.SaveChanges();
+            _context.NewsArticles.Add(article);
+            _context.SaveChanges();
 
             if (tagIds != null && tagIds.Any())
             {
                 foreach (var tagId in tagIds.Distinct())
                 {
-                    db.NewsTags.Add(new NewsTag
+                    _context.NewsTags.Add(new NewsTag
                     {
                         NewsArticleID = article.NewsArticleID,
                         TagID = tagId
                     });
                 }
-                db.SaveChanges();
+                _context.SaveChanges();
             }
 
-            return GetById(article.NewsArticleID) ?? article;
+            return GetById(article.NewsArticleID)!;
         }
 
-        public NewsArticle? Update(NewsArticle article, List<int>? tagIds)
+        public NewsArticleDTO? Update(string id, NewsArticleCreateUpdateDTO dto, short? updatedById)
         {
-            using var db = new FUNewsManagementDbContext();
-            var existing = db.NewsArticles
+            var existing = _context.NewsArticles
                 .Include(n => n.NewsTags)
-                .FirstOrDefault(n => n.NewsArticleID == article.NewsArticleID);
+                .FirstOrDefault(n => n.NewsArticleID == id);
 
             if (existing == null) return null;
 
-            existing.NewsTitle = article.NewsTitle;
-            existing.Headline = article.Headline;
-            existing.NewsContent = article.NewsContent;
-            existing.NewsSource = article.NewsSource;
-            existing.CategoryID = article.CategoryID;
-            existing.NewsStatus = article.NewsStatus;
-            existing.UpdatedByID = article.UpdatedByID;
+            existing.NewsTitle = dto.NewsTitle;
+            existing.Headline = dto.Headline;
+            existing.NewsContent = dto.NewsContent;
+            existing.NewsSource = dto.NewsSource;
+            existing.CategoryID = dto.CategoryID;
+            existing.NewsStatus = dto.NewsStatus;
+            existing.UpdatedByID = updatedById;
             existing.ModifiedDate = DateTime.Now;
 
-            // Update Tags
-            if (tagIds != null)
+            if (dto.TagIDs != null)
             {
-                db.NewsTags.RemoveRange(existing.NewsTags);
-                foreach (var tagId in tagIds.Distinct())
+                _context.NewsTags.RemoveRange(existing.NewsTags);
+                foreach (var tagId in dto.TagIDs.Distinct())
                 {
-                    db.NewsTags.Add(new NewsTag
+                    _context.NewsTags.Add(new NewsTag
                     {
                         NewsArticleID = existing.NewsArticleID,
                         TagID = tagId
@@ -170,14 +207,13 @@ namespace _08_VuTriDung_Assignment02.DAOs
                 }
             }
 
-            db.SaveChanges();
-            return GetById(existing.NewsArticleID);
+            _context.SaveChanges();
+            return GetById(id);
         }
 
         public bool Delete(string id)
         {
-            using var db = new FUNewsManagementDbContext();
-            var existing = db.NewsArticles
+            var existing = _context.NewsArticles
                 .Include(n => n.NewsTags)
                 .FirstOrDefault(n => n.NewsArticleID == id);
 
@@ -185,11 +221,11 @@ namespace _08_VuTriDung_Assignment02.DAOs
 
             if (existing.NewsTags.Any())
             {
-                db.NewsTags.RemoveRange(existing.NewsTags);
+                _context.NewsTags.RemoveRange(existing.NewsTags);
             }
 
-            db.NewsArticles.Remove(existing);
-            db.SaveChanges();
+            _context.NewsArticles.Remove(existing);
+            _context.SaveChanges();
             return true;
         }
     }

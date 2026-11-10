@@ -25,7 +25,7 @@ namespace _08_VuTriDung_Assignment02.Controllers
         [EnableQuery]
         public IActionResult Get()
         {
-            var accounts = _accountRepository.GetAll().AsQueryable();
+            var accounts = _accountRepository.GetAll();
             return Ok(accounts);
         }
 
@@ -71,33 +71,22 @@ namespace _08_VuTriDung_Assignment02.Controllers
                 return Unauthorized(new { message = "Invalid token claims." });
             }
 
-            var account = _accountRepository.GetById(accountId);
-            if (account == null)
+            var existing = _accountRepository.GetById(accountId);
+            if (existing == null)
             {
                 return NotFound(new { message = "Profile not found." });
             }
 
             if (!string.IsNullOrWhiteSpace(dto.AccountEmail))
             {
-                var existing = _accountRepository.GetByEmail(dto.AccountEmail);
-                if (existing != null && existing.AccountID != accountId)
+                var cleanEmail = dto.AccountEmail.Trim();
+                if (_accountRepository.EmailExists(cleanEmail, accountId))
                 {
                     return BadRequest(new { message = "Email already in use." });
                 }
-                account.AccountEmail = dto.AccountEmail;
             }
 
-            if (!string.IsNullOrWhiteSpace(dto.AccountName))
-            {
-                account.AccountName = dto.AccountName;
-            }
-
-            if (!string.IsNullOrWhiteSpace(dto.AccountPassword))
-            {
-                account.AccountPassword = dto.AccountPassword;
-            }
-
-            var updated = _accountRepository.Update(account);
+            var updated = _accountRepository.UpdateProfile(accountId, dto.AccountName, dto.AccountEmail, dto.AccountPassword);
             return Ok(updated);
         }
 
@@ -110,8 +99,8 @@ namespace _08_VuTriDung_Assignment02.Controllers
                 return BadRequest(ModelState);
             }
 
-            var existing = _accountRepository.GetByEmail(dto.AccountEmail);
-            if (existing != null)
+            var cleanEmail = dto.AccountEmail.Trim();
+            if (_accountRepository.EmailExists(cleanEmail))
             {
                 return BadRequest(new { message = "Email already exists in the system." });
             }
@@ -120,7 +109,7 @@ namespace _08_VuTriDung_Assignment02.Controllers
             {
                 AccountID = dto.AccountID,
                 AccountName = dto.AccountName,
-                AccountEmail = dto.AccountEmail,
+                AccountEmail = cleanEmail,
                 AccountRole = dto.AccountRole,
                 AccountPassword = dto.AccountPassword ?? "@1"
             };
@@ -144,21 +133,13 @@ namespace _08_VuTriDung_Assignment02.Controllers
                 return NotFound(new { message = $"Account with ID {id} not found." });
             }
 
-            var emailCheck = _accountRepository.GetByEmail(dto.AccountEmail);
-            if (emailCheck != null && emailCheck.AccountID != id)
+            var cleanEmail = dto.AccountEmail.Trim();
+            if (_accountRepository.EmailExists(cleanEmail, id))
             {
                 return BadRequest(new { message = "Email already in use by another account." });
             }
 
-            existing.AccountName = dto.AccountName;
-            existing.AccountEmail = dto.AccountEmail;
-            existing.AccountRole = dto.AccountRole;
-            if (!string.IsNullOrEmpty(dto.AccountPassword))
-            {
-                existing.AccountPassword = dto.AccountPassword;
-            }
-
-            var updated = _accountRepository.Update(existing);
+            var updated = _accountRepository.UpdateAccount(id, dto.AccountName, cleanEmail, dto.AccountPassword, dto.AccountRole);
             return Ok(updated);
         }
 

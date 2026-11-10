@@ -24,7 +24,7 @@ namespace _08_VuTriDung_Assignment02.Controllers
         [EnableQuery]
         public IActionResult Get()
         {
-            var tags = _tagRepository.GetAll().AsQueryable();
+            var tags = _tagRepository.GetAll();
             return Ok(tags);
         }
 
@@ -70,16 +70,19 @@ namespace _08_VuTriDung_Assignment02.Controllers
                 return BadRequest(ModelState);
             }
 
-            var existing = _tagRepository.GetById(id);
-            if (existing == null)
+            var tag = new Tag
+            {
+                TagID = id,
+                TagName = dto.TagName,
+                Note = dto.Note
+            };
+
+            var updated = _tagRepository.Update(id, tag);
+            if (updated == null)
             {
                 return NotFound(new { message = $"Tag with ID {id} not found." });
             }
 
-            existing.TagName = dto.TagName;
-            existing.Note = dto.Note;
-
-            var updated = _tagRepository.Update(existing);
             return Ok(updated);
         }
 
