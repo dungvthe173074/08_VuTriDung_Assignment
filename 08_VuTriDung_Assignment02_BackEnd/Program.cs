@@ -64,6 +64,49 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
         ClockSkew = TimeSpan.Zero
     };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnChallenge = async context =>
+        {
+            context.HandleResponse();
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            context.Response.ContentType = "application/json";
+
+            string message = "You are not authorized. Please provide a valid token.";
+
+            if (context.AuthenticateFailure is SecurityTokenExpiredException)
+            {
+                message = "Your token has expired. Please log in again.";
+            }
+            else if (context.AuthenticateFailure != null)
+            {
+                message = $"Token validation failed: {context.AuthenticateFailure.Message}";
+            }
+
+            var response = new
+            {
+                statusCode = 401,
+                message = message
+            };
+
+            await context.Response.WriteAsJsonAsync(response);
+        },
+
+        OnForbidden = async context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            context.Response.ContentType = "application/json";
+
+            var response = new
+            {
+                statusCode = 403,
+                message = "You do not have permission to access this resource."
+            };
+
+            await context.Response.WriteAsJsonAsync(response);
+        }
+    };
 });
 
 builder.Services.AddAuthorization();
